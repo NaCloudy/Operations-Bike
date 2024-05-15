@@ -1,0 +1,105 @@
+---
+title: "运筹学"
+author: "史晋成"
+date: "2024-05-14"
+output: html_document
+---
+
+```{r}
+library(readxl)
+library(ggplot2)
+data2 <- read.csv("new_data.csv")
+```
+
+```{r}
+s<-cbind(data$x,data$y)
+s<-as.data.frame(s)
+```
+
+```{r}
+s1<-cbind(data[which(data$label_time=='evening'),]$end_lat,data[which(data$label_time=='evening'),]$end_lng)
+s2<-cbind(data[which(data$label_time=='morning'),]$start_lat,data[which(data$label_time=='morning'),]$start_lng)
+s<-rbind(s1,s2)
+s<-as.data.frame(s)
+```
+
+
+```{r}
+library(ggplot2)
+library(cluster)
+
+# 生成示例数据
+set.seed(123)  # 设置随机种子，以确保结果可重复
+data<-s
+
+# 计算不同 K 值下的 SSE
+k_values <- 10:20  # 设置不同的 K 值
+sse <- numeric(length(k_values))
+
+for (i in 1:length(k_values)) {
+  k <- k_values[i]
+  kmeans_result <- kmeans(data, centers = k)
+  sse[i] <- kmeans_result$tot.withinss
+}
+
+# 绘制 SSE 图
+sse_df <- data.frame(K = k_values, SSE = sse)
+ggplot(sse_df, aes(x = K, y = SSE)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Elbow Method for Optimal K",
+       x = "Number of Clusters (K)",
+       y = "Sum of Squared Errors (SSE)") +
+  theme_minimal()
+```
+
+```{r}
+# 导入包
+library(ggplot2)
+library(cluster)
+
+# 生成示例数据
+data<-s
+
+# 使用kmeans()函数对数据进行聚类
+k <- 16  # 设置聚类数目
+kmeans_result <- kmeans(data, centers = k)
+
+# 打印聚类中心点
+print(kmeans_result$centers)
+
+# 将聚类结果可视化
+cluster_assignment <- kmeans_result$cluster
+ggplot(data.frame(data, cluster = factor(cluster_assignment)), aes(x = V1, y = V2, color = cluster)) +
+  geom_point(alpha = 0.5) +  # 设置透明度为0.5
+  geom_point(data = as.data.frame(kmeans_result$centers), aes(x = V1, y = V2), color = "black", size = 3, shape = 17) +
+  labs(title = "K-means Clustering", x = "X1", y = "X2") +
+  theme_minimal()
+```
+
+
+```{r}
+# 获取每个聚类中心点的值
+centers <- kmeans_result$centers
+print(centers)
+
+# 获取每个类别的元素数量
+cluster_counts <- table(cluster_assignment)
+print(cluster_counts)
+```
+
+```{r}
+morning_count<-table(cluster_assignment[which(data2$label_time=='morning')])
+evening_count<-table(cluster_assignment[which(data2$label_time=='evening')])
+```
+
+
+
+```{r}
+# 将聚类中心点和元素数量合并为一个数据框
+cluster_info <- data.frame(cluster = 1:16, center_X1 = centers[,1], center_X2 = centers[,2], count_morning=morning_count, count_evening=evening_count, count_sum = cluster_counts)
+
+# 导出为 CSV 文件
+write.csv(cluster_info, "cluster_info.csv", row.names = FALSE)
+```
+
